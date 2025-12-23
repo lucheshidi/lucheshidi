@@ -1,4 +1,7 @@
 ![lucheshidi's Stats](https://github-readme-stats.vercel.app/api?username=lucheshidi&theme=vue-dark&show_icons=true&hide_border=false&count_private=false)
+
+![lucheshidi's Streak](https://github-readme-streak-stats.herokuapp.com/?user=lucheshidi&theme=vue-dark&hide_border=false)
+
 ![lucheshidi's Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=lucheshidi&theme=vue-dark&show_icons=true&hide_border=false&layout=compact)
 
 <!---
