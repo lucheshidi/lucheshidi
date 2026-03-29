@@ -1,19 +1,30 @@
--- extraction_simple.lua
--- 纯撤离点：不需要loot，成功后传送到 0 200 0
+-- extraction_simple_v2.lua
+-- 纯撤离点：无需loot物品，成功后传送至 0 200 0
+-- 优化了 playerDetector 检测逻辑，兼容 Advanced Peripherals
 
 local monitor = peripheral.find("monitor") or term
 local speaker = peripheral.find("speaker")
-local redstoneSide = "back"   -- 修改成你红石输出的面（back / top / left 等）
+local redstoneSide = "back"          -- ← 修改成你的红石输出面
+local detector = peripheral.find("playerDetector")
 
-local EXTRACTION_TIME = 45    -- 撤离等待时间（秒），可自行修改
+local EXTRACTION_TIME = 45           -- 撤离倒计时秒数，可改
+local DETECT_RANGE = 8               -- 检测范围（方块），可改大一点
 
 function clearMonitor()
-    monitor.clear()
-    monitor.setCursorPos(1, 1)
+    if monitor and monitor.clear then
+        monitor.clear()
+        monitor.setCursorPos(1, 1)
+    else
+        term.clear()
+        term.setCursorPos(1, 1)
+    end
 end
 
 function printCentered(text, line)
-    if not monitor then return end
+    if not monitor or not monitor.getSize then 
+        print(text)
+        return 
+    end
     local w = monitor.getSize()
     monitor.setCursorPos(math.floor((w - #text) / 2) + 1, line)
     monitor.write(text)
@@ -24,27 +35,26 @@ while true do
     printCentered("=== 撤离点 ===", 2)
     printCentered("等待玩家进入...", 4)
 
-    -- 等待玩家进入（优先用 Advanced Peripherals）
-    local detector = peripheral.find("playerDetector")
     local playerName = nil
 
+    -- 等待玩家进入区域
     repeat
         if detector then
-            local players = detector.getPlayersInRange(8)  -- 调整检测范围（方块）
-            if #players > 0 then
-                playerName = players[1]
+            local players = detector.getPlayersInRange(DETECT_RANGE)
+            if players and #players > 0 then
+                playerName = players[1]   -- 取第一个检测到的玩家
             end
         else
-            -- 没有 playerDetector 时，用红石触发（压力板连到 computer）
+            -- 没有 playerDetector 时用红石触发
             os.pullEvent("redstone")
-            playerName = "玩家"  -- 简化处理
+            playerName = "玩家"
         end
         sleep(0.5)
     until playerName
 
     -- 开始撤离流程
     clearMonitor()
-    printCentered("检测到玩家: " .. playerName, 2)
+    printCentered("检测到: " .. playerName, 2)
     printCentered("正在撤离...", 4)
     
     if speaker then speaker.playSound("minecraft:ui.toast.in", 1, 1) end
@@ -55,10 +65,17 @@ while true do
         printCentered("撤离倒计时: " .. t .. " 秒", 3)
         printCentered("请保持在区域内！", 5)
 
-        -- 检查是否还在区域
+        -- 检查玩家是否还在区域
         if detector then
-            local playersNow = detector.getPlayersInRange(8)
-            if #playersNow == 0 or playersNow[1] ~= playerName then
+            local currentPlayers = detector.getPlayersInRange(DETECT_RANGE)
+            local stillHere = false
+            for _, p in ipairs(currentPlayers) do
+                if p == playerName then
+                    stillHere = true
+                    break
+                end
+            end
+            if not stillHere then
                 success = false
                 break
             end
@@ -70,16 +87,14 @@ while true do
     if success then
         clearMonitor()
         printCentered("撤离成功！", 3)
-        printCentered("正在传送至安全点...", 5)
+        printCentered("正在传送...", 5)
 
-        if speaker then 
-            speaker.playSound("minecraft:entity.player.levelup", 1, 1) 
-        end
+        if speaker then speaker.playSound("minecraft:entity.player.levelup", 1, 1) end
 
-        redstone.setOutput(redstoneSide, true)   -- 触发红石（可接灯/特效）
-        sleep(1.5)
+        redstone.setOutput(redstoneSide, true)
+        sleep(1)
 
-        -- 关键：传送玩家到 0 200 0
+        -- 传送玩家到 0 200 0
         commands.exec("tp " .. playerName .. " 0 200 0")
 
         redstone.setOutput(redstoneSide, false)
@@ -92,5 +107,5 @@ while true do
         sleep(2)
     end
 
-    sleep(3)  -- 重置等待
+    sleep(3)  -- 重置
 end
